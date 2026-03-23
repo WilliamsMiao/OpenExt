@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server'
 import { writeFileSync, mkdirSync, existsSync } from 'fs'
 import { join } from 'path'
+import { spawn } from 'child_process'
 
 export const dynamic = 'force-dynamic'
 
 const WORKSPACE_PATH = process.env.WORKSPACE_PATH || join(process.cwd(), '../../workspace')
+const OPENCLAW_CONTAINER = process.env.OPENCLAW_CONTAINER || 'openclaw'
 
 export async function POST(request: Request) {
   try {
@@ -52,12 +54,31 @@ ${trimmed}
       'utf-8'
     )
 
-    return NextResponse.json({ ok: true, message: '任务已提交', timestamp })
+    // Trigger the Coordinator via docker exec (fire-and-forget)
+    // The coordinator runs inside the openclaw container where the CLI and model keys are available.
+    const message = `新任务已提交，请读取 goal.md 并开始执行：${trimmed}`
+    const proc = spawn(
+      'docker',
+      [
+        'exec', OPENCLAW_CONTAINER,
+        'node', '/app/openclaw.mjs',
+        'agent',
+        '--agent', 'coordinator',
+        '-m', message,
+      ],
+      { detached: true, stdio: 'ignore' }
+    )
+    proc.unref() // don't wait — let it run in background
+
+    return NextResponse.json({
+      ok: true,
+      message: '任务已提交，Coordinator 已启动',
+      timestamp,
+    })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     console.error('[/api/task] Error:', message)
 
-    // Return a helpful error if the workspace is read-only
     if (message.includes('EROFS') || message.includes('read-only')) {
       return NextResponse.json(
         {

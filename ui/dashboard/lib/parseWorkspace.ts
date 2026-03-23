@@ -62,7 +62,6 @@ function parseFields(text: string): Record<string, string> {
 // ─── status.md parser ─────────────────────────────────────────────────────────
 
 export function parseStatusMd(content: string): AgentOutput[] {
-  const results: AgentOutput[] = []
   const foundIds = new Set<string>()
 
   // Two-pass approach to avoid the gm-flag + lazy-quantifier + $ bug:
@@ -80,6 +79,9 @@ export function parseStatusMd(content: string): AgentOutput[] {
       statusLine: m[2].trim(),
     })
   }
+
+  // Use a map to keep only the LAST block per agent (most recent state wins)
+  const agentMap = new Map<string, AgentOutput>()
 
   for (let i = 0; i < headers.length; i++) {
     const h = headers[i]
@@ -105,7 +107,8 @@ export function parseStatusMd(content: string): AgentOutput[] {
     const fields = parseFields(bodyText)
 
     foundIds.add(agentDef.agentId)
-    results.push({
+    // Later blocks overwrite earlier ones (last write wins = most recent state)
+    agentMap.set(agentDef.agentId, {
       agentId: agentDef.agentId,
       displayName: agentDef.displayName,
       emoji: agentDef.emoji,
@@ -117,8 +120,12 @@ export function parseStatusMd(content: string): AgentOutput[] {
     })
   }
 
-  // If no agent blocks found but file has content → coordinator raw display
-  if (results.length === 0 && content.trim().length > 30) {
+  const results: AgentOutput[] = Array.from(agentMap.values())
+
+  // If no agent blocks found but file looks like it was meant to have them → show raw
+  // (skip this for placeholder/initialized content that just doesn't have agent blocks yet)
+  const looksLikeAgentContent = /\[.+\]/.test(content) // has bracket notation, likely attempted agent block
+  if (results.length === 0 && content.trim().length > 30 && looksLikeAgentContent) {
     const coord = AGENT_DEFINITIONS[0]
     results.push({
       agentId: coord.agentId,

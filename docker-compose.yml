@@ -66,9 +66,16 @@ services:
       - "3000:3000"
     volumes:
       - ./workspace:/app/workspace
+      - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - WORKSPACE_PATH=/app/workspace
-      - OPENCLAW_API=http://openclaw:18789
+      # OpenClaw 绑定在容器内 loopback(127.0.0.1)，同网络容器无法直连；
+      # 经宿主机端口转发才能到达。Docker Desktop(Mac/Win) 用 host.docker.internal；
+      # Linux 宿主请改为 host-gateway 并在 extra_hosts 中声明。
+      - OPENCLAW_API=http://host.docker.internal:18789
+      - OPENCLAW_CONTAINER=openclaw
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       - openclaw
     networks:
@@ -81,7 +88,9 @@ services:
     container_name: openclaw_telegram
     environment:
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
-      - OPENCLAW_API=http://openclaw:18789
+      - OPENCLAW_API=http://host.docker.internal:18789
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       - openclaw
     networks:
