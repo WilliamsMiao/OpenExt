@@ -1,0 +1,94 @@
+{
+  "version": "1.0",
+  "workspace": "./workspace",
+  "llm": {
+    "provider": "minimax",
+    "api_key": "${MINIMAX_API_KEY}",
+    "base_url": "https://api.minimax.chat/v1"
+  },
+  "agents": [
+    {
+      "id": "coordinator",
+      "name": "Coordinator",
+      "identity": "./agents/coordinator/identity.md",
+      "model": "minimax-m2.1",
+      "tools": [
+        "sessions_send",
+        "read_file",
+        "write_file",
+        "list_files",
+        "get_session_status"
+      ]
+    },
+    {
+      "id": "hr_trainer",
+      "name": "HR & Trainer",
+      "identity": "./agents/hr_trainer/identity.md",
+      "model": "minimax-m2.1",
+      "tools": [
+        "read_file",
+        "write_file",
+        "sessions_send"
+      ]
+    },
+    {
+      "id": "sales_lead",
+      "name": "Sales Lead",
+      "identity": "./agents/sales_lead/identity.md",
+      "model": "minimax-m2.5-highspeed",
+      "tools": [
+        "read_file",
+        "write_file",
+        "sessions_send"
+      ]
+    },
+    {
+      "id": "supply_lead",
+      "name": "Supply Chain Lead",
+      "identity": "./agents/supply_lead/identity.md",
+      "model": "minimax-m2.1",
+      "tools": [
+        "read_file",
+        "write_file",
+        "sessions_send"
+      ]
+    },
+    {
+      "id": "ops_lead",
+      "name": "Operations Lead",
+      "identity": "./agents/ops_lead/identity.md",
+      "model": "minimax-m2.1",
+      "tools": [
+        "read_file",
+        "write_file",
+        "sessions_send"
+      ]
+    },
+    {
+      "id": "finance_lead",
+      "name": "Finance Lead",
+      "identity": "./agents/finance_lead/identity.md",
+      "model": "minimax-m2.1",
+      "tools": [
+        "read_file",
+        "write_file",
+        "sessions_send"
+      ]
+    }
+  ],
+  "server": {
+    "port": 18789,
+    "host": "0.0.0.0"
+  },
+  "database": {
+    "host": "postgres",
+    "port": 5432,
+    "name": "openclaw",
+    "user": "openclaw",
+    "password": "${POSTGRES_PASSWORD}"
+  },
+  "redis": {
+    "host": "redis",
+    "port": 6379
+  }
+}

@@ -1,0 +1,98 @@
+version: "3.9"
+
+services:
+  openclaw:
+    image: alpine/openclaw:main
+    container_name: openclaw
+    ports:
+      - "18789:18789"
+    volumes:
+      - .:/workspace
+    environment:
+      - OPENCLAW_HOME=/workspace
+      - MINIMAX_API_KEY=${MINIMAX_API_KEY}
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=openclaw
+      - POSTGRES_USER=openclaw
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-openclaw_pass}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - openclaw_net
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: openclaw_postgres
+    environment:
+      - POSTGRES_DB=openclaw
+      - POSTGRES_USER=openclaw
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-openclaw_pass}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U openclaw"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - openclaw_net
+
+  redis:
+    image: redis:7-alpine
+    container_name: openclaw_redis
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - openclaw_net
+
+  dashboard:
+    build:
+      context: ./ui/dashboard
+      dockerfile: Dockerfile
+    container_name: openclaw_dashboard
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./workspace:/app/workspace
+    environment:
+      - WORKSPACE_PATH=/app/workspace
+      - OPENCLAW_API=http://openclaw:18789
+    depends_on:
+      - openclaw
+    networks:
+      - openclaw_net
+
+  telegram-bridge:
+    build:
+      context: ./ui/telegram-bridge
+      dockerfile: Dockerfile
+    container_name: openclaw_telegram
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - OPENCLAW_API=http://openclaw:18789
+    depends_on:
+      - openclaw
+    networks:
+      - openclaw_net
+    profiles:
+      - telegram
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  openclaw_net:
+    driver: bridge
